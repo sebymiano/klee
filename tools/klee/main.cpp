@@ -26,7 +26,6 @@
 #include "klee/util/ExprPPrinter.h"
 #include "../lib/Core/Memory.h"
 
-#include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstrTypes.h"
@@ -49,6 +48,11 @@
 #include "llvm/Support/system_error.h"
 #endif
 
+#if LLVM_VERSION_CODE >= LLVM_VERSION(4, 0)
+#include <llvm/Bitcode/BitcodeReader.h>
+#else
+#include <llvm/Bitcode/ReaderWriter.h>
+#endif
 
 #include <dirent.h>
 #include <signal.h>
