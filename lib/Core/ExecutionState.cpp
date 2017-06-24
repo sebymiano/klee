@@ -90,7 +90,8 @@ ExecutionState::ExecutionState(KFunction *kf) :
     ptreeNode(0),
     relevantSymbols(),
     doTrace(true),
-    condoneUndeclaredHavocs(false) {
+    condoneUndeclaredHavocs(false),
+    steppedInstructions(0){
   pushFrame(0, kf);
 }
 
@@ -111,6 +112,11 @@ ExecutionState::~ExecutionState() {
     if (mo->refCount == 0)
       delete mo;
   }
+
+  for (auto cur_mergehandler: openMergeStack){
+    cur_mergehandler->removeOpenState(this);
+  }
+
 
   for(auto it = havocs.begin(); it != havocs.end(); ++it) {
     const MemoryObject *mo = it->first;
@@ -161,9 +167,13 @@ ExecutionState::ExecutionState(const ExecutionState& state):
     doTrace(state.doTrace),
     condoneUndeclaredHavocs(state.condoneUndeclaredHavocs),
     openMergeStack(state.openMergeStack)
+    steppedInstructions(state.steppedInstructions)
 {
   for (unsigned int i=0; i<symbolics.size(); i++)
     symbolics[i].first->refCount++;
+
+  for (auto cur_mergehandler: openMergeStack)
+    cur_mergehandler->addOpenState(this);
 
   for(auto it = havocs.begin(); it != havocs.end(); ++it) {
     it->first->refCount++;
