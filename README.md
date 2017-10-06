@@ -3,6 +3,9 @@ This repo contains features neccesary for the VNDS project.
 KLEE Symbolic Virtual Machine
 =============================
 
+[![Build Status](https://travis-ci.org/klee/klee.svg?branch=master)](https://travis-ci.org/klee/klee)
+[![Coverage](https://codecov.io/gh/klee/klee/branch/master/graph/badge.svg)](https://codecov.io/gh/klee/klee)
+
 `KLEE` is a symbolic virtual machine built on top of the LLVM compiler
 infrastructure. Currently, there are two primary components:
 
