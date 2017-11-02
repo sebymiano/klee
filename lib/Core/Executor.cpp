@@ -2591,6 +2591,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
           of == iIdx ? newElt : ExtractExpr::create(vec, bitOffset, EltBits));
     }
 
+    assert(Context::get().isLittleEndian() && "FIXME:Broken for big endian");
     ref<Expr> Result = ConcatExpr::createN(elementCount, elems.data());
     bindLocal(ki, state, Result);
     break;
