@@ -216,6 +216,8 @@ public:
   void write32(unsigned offset, uint32_t value);
   void write64(unsigned offset, uint64_t value);
 
+  void print() const;
+
   const Array *forgetThese(const BitArray *bytesToForget);
   const Array *forgetAll();
 
@@ -245,7 +247,6 @@ private:
   void markByteUnflushed(unsigned offset);
   void setKnownSymbolic(unsigned offset, Expr *value);
 
-  void print() const;
   ArrayCache *getArrayCache() const;
 };
 
