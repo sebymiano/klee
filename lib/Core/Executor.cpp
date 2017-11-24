@@ -259,15 +259,13 @@ namespace {
 		      cl::init(1.),
 		      cl::desc("(default=1.0)"));
 
-  cl::opt<double>
+  cl::opt<std::string>
   MaxInstructionTime("max-instruction-time",
-                     cl::desc("Only allow a single instruction to take this much time (default=0s (off)). Enables --use-forked-solver"),
-                     cl::init(0));
+                     cl::desc("Allow a single instruction to take only this much time (default=0s (off)). Enables --use-forked-solver"));
   
-  cl::opt<double>
+  cl::opt<std::string>
   SeedTime("seed-time",
-           cl::desc("Amount of time to dedicate to seeds, before normal search (default=0 (off))"),
-           cl::init(0));
+           cl::desc("Amount of time to dedicate to seeds, before normal search (default=0s (off))"));
   
   cl::list<Executor::TerminateReason>
   ExitOnErrorType("exit-on-error-type",
@@ -345,11 +343,14 @@ Executor::Executor(LLVMContext &ctx, const InterpreterOptions &opts,
       pathWriter(0), symPathWriter(0), specialFunctionHandler(0),
       processTree(0), replayKTest(0), replayPath(0), usingSeeds(0),
       atMemoryLimit(false), inhibitForking(false), haltExecution(false),
-      ivcEnabled(false),
-      coreSolverTimeout(MaxCoreSolverTime != 0 && MaxInstructionTime != 0
-                            ? std::min(MaxCoreSolverTime, MaxInstructionTime)
-                            : std::max(MaxCoreSolverTime, MaxInstructionTime)),
-      debugLogBuffer(debugBufferString) {
+      ivcEnabled(false), debugLogBuffer(debugBufferString) {
+
+
+  const time::Span maxCoreSolverTime(MaxCoreSolverTime);
+  maxInstructionTime = time::Span(MaxInstructionTime);
+  coreSolverTimeout = maxCoreSolverTime && maxInstructionTime ?
+                      std::min(maxCoreSolverTime, maxInstructionTime)
+                    : std::max(maxCoreSolverTime, maxInstructionTime);
 
   if (coreSolverTimeout) UseForkedCoreSolver = true;
   Solver *coreSolver = klee::createCoreSolver(CoreSolverToUse);
@@ -796,7 +797,7 @@ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
   if (!isSeeding && !isa<ConstantExpr>(condition) && 
       (MaxStaticForkPct!=1. || MaxStaticSolvePct != 1. ||
        MaxStaticCPForkPct!=1. || MaxStaticCPSolvePct != 1.) &&
-      statsTracker->elapsed() > 60.) {
+      statsTracker->elapsed() > time::seconds(60)) {
     StatisticManager &sm = *theStatisticManager;
     CallPathNode *cpn = current.stack.back().callPathNode;
     if ((MaxStaticForkPct<1. &&
@@ -820,12 +821,12 @@ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal) {
     }
   }
 
-  double timeout = coreSolverTimeout;
+  time::Span timeout = coreSolverTimeout;
   if (isSeeding)
     timeout *= it->second.size();
   solver->setTimeout(timeout);
   bool success = solver->evaluate(current, condition, res);
-  solver->setTimeout(0);
+  solver->setTimeout(time::Span());
   if (!success) {
     current.pc = current.prevPC;
     terminateStateEarly(current, "Query timed out (fork).");
@@ -1093,7 +1094,7 @@ ref<Expr> Executor::toUnique(const ExecutionState &state,
       if (solver->mustBeTrue(state, cond, isTrue) && isTrue)
         result = value;
     }
-    solver->setTimeout(0);
+    solver->setTimeout(time::Span());
   }
   
   return result;
@@ -2964,7 +2965,7 @@ void Executor::run(ExecutionState &initialState) {
       v.push_back(SeedInfo(*it));
 
     int lastNumSeeds = usingSeeds->size()+10;
-    double lastTime, startTime = lastTime = util::getWallTime();
+    time::Point lastTime, startTime = lastTime = time::getWallTime();
     ExecutionState *lastState = 0;
     while (!seedMap.empty()) {
       if (haltExecution) {
@@ -2983,7 +2984,7 @@ void Executor::run(ExecutionState &initialState) {
       stepInstruction(state);
 
       executeInstruction(state, ki);
-      processTimers(&state, MaxInstructionTime * numSeeds);
+      processTimers(&state, maxInstructionTime * numSeeds);
       updateStates(&state);
 
       if ((stats::instructions % 1000) == 0) {
@@ -2994,13 +2995,14 @@ void Executor::run(ExecutionState &initialState) {
           numSeeds += it->second.size();
           numStates++;
         }
-        double time = util::getWallTime();
-        if (SeedTime>0. && time > startTime + SeedTime) {
+        const auto time = time::getWallTime();
+        const time::Span seedTime(SeedTime);
+        if (seedTime && time > startTime + seedTime) {
           klee_warning("seed time expired, %d seeds remain over %d states",
                        numSeeds, numStates);
           break;
         } else if (numSeeds<=lastNumSeeds-10 ||
-                   time >= lastTime+10) {
+                   time - lastTime >= time::seconds(10)) {
           lastTime = time;
           lastNumSeeds = numSeeds;          
           klee_message("%d seeds remaining over: %d states", 
@@ -3036,7 +3038,7 @@ void Executor::run(ExecutionState &initialState) {
     stepInstruction(state);
 
     executeInstruction(state, ki);
-    processTimers(&state, MaxInstructionTime);
+    processTimers(&state, maxInstructionTime);
 
     checkMemoryUsage();
 
@@ -3664,7 +3666,7 @@ void Executor::executeMemoryOperation(ExecutionState &state,
     address = toConstant(state, address, "resolveOne failure");
     success = state.addressSpace.resolveOne(cast<ConstantExpr>(address), op);
   }
-  solver->setTimeout(0);
+  solver->setTimeout(time::Span());
 
   if (success) {
     const MemoryObject *mo = op.first;
@@ -3680,7 +3682,7 @@ void Executor::executeMemoryOperation(ExecutionState &state,
     bool inBounds;
     solver->setTimeout(coreSolverTimeout);
     bool success = solver->mustBeTrue(state, check, inBounds);
-    solver->setTimeout(0);
+    solver->setTimeout(time::Span());
     if (!success) {
       state.pc = state.prevPC;
       terminateStateEarly(state, "Query timed out (bounds check).");
@@ -3768,7 +3770,7 @@ void Executor::executeMemoryOperation(ExecutionState &state,
   solver->setTimeout(coreSolverTimeout);
   bool incomplete = state.addressSpace.resolve(state, solver, address, rl,
                                                0, coreSolverTimeout);
-  solver->setTimeout(0);
+  solver->setTimeout(time::Span());
   
   // XXX there is some query wasteage here. who cares?
   ExecutionState *unbound = &state;
@@ -4131,7 +4133,7 @@ bool Executor::getSymbolicSolution(const ExecutionState &state,
     }
   }
   bool success = solver->getInitialValues(tmp, objects, values);
-  solver->setTimeout(0);
+  solver->setTimeout(time::Span());
   if (!success) {
     klee_warning("unable to compute initial values (invalid constraints?)!");
     ExprPPrinter::printQuery(llvm::errs(), state.constraints,
