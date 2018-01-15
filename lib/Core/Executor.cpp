@@ -2511,7 +2511,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
     llvm::APFloat Arg(*fpWidthToSemantics(arg->getWidth()), arg->getAPValue());
     uint64_t value = 0;
     bool isExact = true;
-    Arg.convertToInteger(&value, resultType, false,
+#if LLVM_VERSION_CODE >= LLVM_VERSION(5, 0)
+    auto valueRef = makeMutableArrayRef(value);
+#else
+    uint64_t *valueRef = &value;
+#endif
+    Arg.convertToInteger(valueRef, resultType, false,
                          llvm::APFloat::rmTowardZero, &isExact);
     bindLocal(ki, state, ConstantExpr::alloc(value, resultType));
     break;
@@ -2528,7 +2533,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
     uint64_t value = 0;
     bool isExact = true;
-    Arg.convertToInteger(&value, resultType, true,
+#if LLVM_VERSION_CODE >= LLVM_VERSION(5, 0)
+    auto valueRef = makeMutableArrayRef(value);
+#else
+    uint64_t *valueRef = &value;
+#endif
+    Arg.convertToInteger(valueRef, resultType, true,
                          llvm::APFloat::rmTowardZero, &isExact);
     bindLocal(ki, state, ConstantExpr::alloc(value, resultType));
     break;
