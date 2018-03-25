@@ -288,6 +288,12 @@ void klee_abort() {
   exit(-1);
 }
 
+void klee_prefer_cex(void *object, uintptr_t condition) { }
+
+void klee_abort() {
+  exit(1);
+}
+
 /* not sure we should even define.  is for debugging. */
 void klee_print_expr(const char *msg, ...) { }
 
