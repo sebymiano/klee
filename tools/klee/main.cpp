@@ -453,11 +453,6 @@ llvm::raw_fd_ostream *KleeHandler::openTestFile(const std::string &suffix,
 void KleeHandler::processTestCase(const ExecutionState &state,
                                   const char *errorMessage,
                                   const char *errorSuffix) {
-  if (errorMessage && OptExitOnError) {
-    m_interpreter->prepareForEarlyExit();
-    klee_error("EXITING ON ERROR:\n%s\n", errorMessage);
-  }
-
   if (!NoOutput) {
     std::vector< std::pair<std::string, std::vector<unsigned char> > > out;
     std::vector< HavocedLocation > havocs;
@@ -631,6 +626,11 @@ void KleeHandler::processTestCase(const ExecutionState &state,
          << elapsed_time << "s\n";
       delete f;
     }
+  }
+  
+  if (errorMessage && OptExitOnError) {
+    m_interpreter->prepareForEarlyExit();
+    klee_error("EXITING ON ERROR:\n%s\n", errorMessage);
   }
 }
 
