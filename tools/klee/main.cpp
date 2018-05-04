@@ -1480,6 +1480,8 @@ static const char *modelledExternals[] = {
   "_assert",
   "__assert_fail",
   "__assert_rtn",
+  "__errno_location",
+  "__error",
   "calloc",
   "_exit",
   "exit",

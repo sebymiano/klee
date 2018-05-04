@@ -195,6 +195,9 @@ extern "C" {
   /* Merge all paths of the state that went through klee_open_merge */
   void klee_close_merge();
 
+  /* Get errno value of the current state */
+  int klee_get_errno(void);
+
 #define KLEE_TRACE_PARAM_PROTO(suffix, type) \
   void klee_trace_param##suffix(type param, const char* name)
   KLEE_TRACE_PARAM_PROTO(f, float);
