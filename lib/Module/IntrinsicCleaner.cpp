@@ -312,8 +312,7 @@ bool IntrinsicCleanerPass::runOnBasicBlock(BasicBlock &b, Module &M) {
         break;
       }
       default:
-        if (LowerIntrinsics)
-          IL->LowerIntrinsicCall(ii);
+        IL->LowerIntrinsicCall(ii);
         dirty = true;
         break;
       }
