@@ -43,7 +43,7 @@
 #include "llvm/Support/Path.h"
 #include "llvm/Transforms/Scalar.h"
 
-#include <llvm/Transforms/Utils/Cloning.h>
+#include "llvm/Transforms/Utils/Cloning.h"
 
 #include <sstream>
 
