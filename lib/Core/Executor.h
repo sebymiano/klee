@@ -121,7 +121,7 @@ private:
 
   class TimerInfo;
 
-  KModule *kmodule;
+  std::unique_ptr<KModule> kmodule;
   InterpreterHandler *interpreterHandler;
   Searcher *searcher;
 
@@ -501,8 +501,8 @@ public:
     replayPosition = 0;
   }
 
-  virtual const llvm::Module *
-  setModule(llvm::Module *module, const ModuleOptions &opts);
+  llvm::Module *setModule(std::vector<std::unique_ptr<llvm::Module>> &modules,
+                          const ModuleOptions &opts) override;
 
   virtual void useSeeds(const std::vector<struct KTest *> *seeds) { 
     usingSeeds = seeds;
