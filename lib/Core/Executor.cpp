@@ -1166,9 +1166,7 @@ void Executor::printDebugInstructions(ExecutionState &state) {
 
   if (!DebugPrintInstructions.isSet(STDERR_COMPACT) &&
       !DebugPrintInstructions.isSet(FILE_COMPACT)) {
-    (*stream) << "     ";
-    state.pc->printFileLine(*stream);
-    (*stream) << ":";
+    (*stream) << "     " << state.pc->printFileLine() << ":";
   }
 
   (*stream) << state.pc->info->assemblyLine;
@@ -3276,10 +3274,9 @@ void Executor::callExternalFunction(ExecutionState &state,
     for (unsigned i=0; i<arguments.size(); i++) {
       os << arguments[i];
       if (i != arguments.size()-1)
-	os << ", ";
+        os << ", ";
     }
-    os << ") at ";
-    state.pc->printFileLine(os);
+    os << ") at " << state.pc->printFileLine();
     
     if (AllExternalWarnings)
       klee_warning("%s", os.str().c_str());
