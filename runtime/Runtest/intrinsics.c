@@ -84,6 +84,10 @@ static void init_test_data() {
 }
 
 void klee_make_symbolic(void *array, size_t nbytes, const char *name) {
+
+  if (!name)
+    name = "unnamed";
+
   static int rand_init = -1;
 
   if (rand_init == -1) {
