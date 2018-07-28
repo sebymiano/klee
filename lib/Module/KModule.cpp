@@ -310,8 +310,11 @@ void KModule::manifest(InterpreterHandler *ih, bool forceSourceOutput) {
 
   if (DebugPrintEscapingFunctions && !escapingFunctions.empty()) {
     llvm::errs() << "KLEE: escaping functions: [";
-    for (auto &Function : escapingFunctions)
-      llvm::errs() << Function->getName() << ", ";
+    std::string delimiter = "";
+    for (auto &Function : escapingFunctions) {
+      llvm::errs() << delimiter << Function->getName();
+      delimiter = ", ";
+    }
     llvm::errs() << "]\n";
   }
 }
