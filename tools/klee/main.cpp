@@ -26,16 +26,17 @@
 #include "klee/util/ExprPPrinter.h"
 #include "../lib/Core/Memory.h"
 
+#include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/IR/Constants.h"
-#include "llvm/IR/Type.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Type.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Errno.h"
 #include "llvm/Support/FileSystem.h"
-#include "llvm/Bitcode/ReaderWriter.h"
-#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/Path.h"
@@ -1847,6 +1848,7 @@ createLibCWrapper(std::vector<std::unique_ptr<llvm::Module>> &modules,
                        GlobalVariable::ExternalLinkage, intendedFunction,
                        libcMainFn->getParent());
   BasicBlock *bb = BasicBlock::Create(ctx, "entry", stub);
+  llvm::IRBuilder<> Builder(bb);
 
   std::vector<llvm::Value*> args;
   args.push_back(
@@ -1857,9 +1859,8 @@ createLibCWrapper(std::vector<std::unique_ptr<llvm::Module>> &modules,
   args.push_back(Constant::getNullValue(ft->getParamType(4))); // app_fini
   args.push_back(Constant::getNullValue(ft->getParamType(5))); // rtld_fini
   args.push_back(Constant::getNullValue(ft->getParamType(6))); // stack_end
-  CallInst::Create(libcMainFn, args, "", bb);
-
-  new UnreachableInst(ctx, bb);
+  Builder.CreateCall(libcMainFn, args);
+  Builder.CreateUnreachable();
 }
 
 static void
