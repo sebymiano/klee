@@ -116,6 +116,7 @@ static SpecialFunctionHandler::HandlerInfo handlerInfo[] = {
   add("klee_alias_function_regex", handleAliasFunctionRegex, false),
   add("klee_alias_undo", handleAliasUndo, false),
   add("malloc", handleMalloc, true),
+  add("memalign", handleMemalign, true),
   add("realloc", handleRealloc, true),
   add("klee_trace_paramf", handleTraceParam, false),
   add("klee_trace_paramd", handleTraceParam, false),
@@ -496,6 +497,40 @@ void SpecialFunctionHandler::handleMalloc(ExecutionState &state,
   // XXX should type check args
   assert(arguments.size()==1 && "invalid number of arguments to malloc");
   executor.executeAlloc(state, arguments[0], false, target);
+}
+
+void SpecialFunctionHandler::handleMemalign(ExecutionState &state,
+                                            KInstruction *target,
+                                            std::vector<ref<Expr>> &arguments) {
+  if (arguments.size() != 2) {
+    executor.terminateStateOnError(state,
+      "Incorrect number of arguments to memalign(size_t alignment, size_t size)",
+      Executor::User);
+    return;
+  }
+
+  std::pair<ref<Expr>, ref<Expr>> alignmentRangeExpr =
+      executor.solver->getRange(state, arguments[0]);
+  ref<Expr> alignmentExpr = alignmentRangeExpr.first;
+  auto alignmentConstExpr = dyn_cast<ConstantExpr>(alignmentExpr);
+
+  if (!alignmentConstExpr) {
+    executor.terminateStateOnError(state,
+      "Could not determine size of symbolic alignment",
+      Executor::User);
+    return;
+  }
+
+  uint64_t alignment = alignmentConstExpr->getZExtValue();
+
+  // Warn, if the expression has more than one solution
+  if (alignmentRangeExpr.first != alignmentRangeExpr.second) {
+    klee_warning_once(
+        0, "Symbolic alignment for memalign. Choosing smallest alignment");
+  }
+
+  executor.executeAlloc(state, arguments[1], false, target, false, 0,
+                        alignment);
 }
 
 void SpecialFunctionHandler::handleAssume(ExecutionState &state,
