@@ -23,7 +23,7 @@
 #include "Executor.h"
 #include "MemoryManager.h"
 
-#include "klee/CommandLine.h"
+#include "klee/SolverCmdLine.h"
 
 #include "llvm/IR/Module.h"
 #include "llvm/ADT/Twine.h"
