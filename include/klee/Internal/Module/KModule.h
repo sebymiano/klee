@@ -171,6 +171,10 @@ namespace klee {
     /// Return an id for the given constant, creating a new one if necessary.
     unsigned getConstantID(llvm::Constant *c, KInstruction* ki);
 
+    /// Run passes that check if module is valid LLVM IR and if invariants
+    /// expected by KLEE's Executor hold.
+    void checkModule();
+
     /// Clear out the records for the analyzed loops in all the functions.
     void clearAnalysedLoops();
   };
