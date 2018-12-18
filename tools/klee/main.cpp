@@ -138,14 +138,26 @@ namespace {
 
   cl::opt<std::string>
   RunInDir("run-in-dir",
-           cl::desc("Change to the given directory prior to executing"),
+           cl::desc("Change to the given directory before starting execution"),
            cl::cat(StartCat));
+  
+  cl::opt<std::string>
+  OutputDir("output-dir",
+            cl::desc("Directory in which to write results (default=klee-out-<N>)"),
+            cl::init(""),
+            cl::cat(StartCat));
 
   cl::opt<std::string>
   Environ("environ",
           cl::desc("Parse environment from given file (in \"env\" format)"),
           cl::cat(StartCat));
 
+  cl::opt<bool>
+  OptimizeModule("optimize",
+                 cl::desc("Optimize the code before execution"),
+		 cl::init(false),
+                 cl::cat(StartCat));
+  
 
   /*** Linking options ***/
 
@@ -182,6 +194,25 @@ namespace {
                    cl::init(false),
                    cl::cat(LinkCat));
 
+
+  /*** Checks options ***/
+
+  cl::OptionCategory ChecksCat("Checks options",
+                               "These options control some of the checks being done by KLEE.");
+
+  cl::opt<bool>
+  CheckDivZero("check-div-zero",
+               cl::desc("Inject checks for division-by-zero (default=true)"),
+               cl::init(true),
+               cl::cat(ChecksCat));
+
+  cl::opt<bool>
+  CheckOvershift("check-overshift",
+                 cl::desc("Inject checks for overshift (default=true)"),
+                 cl::init(true),
+                 cl::cat(ChecksCat));
+
+ 
 
   cl::opt<bool>
   NoOutput("no-output",
