@@ -146,8 +146,8 @@ namespace {
             cl::cat(StartCat));
 
   cl::opt<std::string>
-  Environ("environ",
-          cl::desc("Parse environment from given file (in \"env\" format)"),
+  Environ("env-file",
+          cl::desc("Parse environment from the given file (in \"env\" format)"),
           cl::cat(StartCat));
 
   cl::opt<bool>
