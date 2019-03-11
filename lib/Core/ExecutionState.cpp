@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "Memory.h"
+
 #include <stdio.h>
 #include <iostream>
 #include <ostream>
@@ -14,38 +16,39 @@
 
 #include "klee/ExecutionState.h"
 
+#include "klee/Expr.h"
 #include "klee/Internal/Module/Cell.h"
 #include "klee/Internal/Support/ErrorHandling.h"
 #include "klee/Internal/Module/InstructionInfoTable.h"
 #include "klee/Internal/Module/KInstruction.h"
 #include "klee/Internal/Module/KModule.h"
+#include "klee/OptionCategories.h"
 #include "TimingSolver.h"
 #include "klee/LoopAnalysis.h"
 
-#include "klee/Expr.h"
-
-#include "Memory.h"
 #include "llvm/IR/Function.h"
 #include "llvm/DebugInfo.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <cassert>
 #include <algorithm>
 #include <iomanip>
-#include <sstream>
-#include <cassert>
 #include <map>
 #include <regex>
 #include <set>
+#include <sstream>
 #include <stdarg.h>
 #include <tuple>
 
 using namespace llvm;
 using namespace klee;
 
-namespace { 
-  cl::opt<bool>
-  DebugLogStateMerge("debug-log-state-merge");
+namespace {
+cl::opt<bool> DebugLogStateMerge(
+    "debug-log-state-merge", cl::init(false),
+    cl::desc("Debug information for underlying state merging (default=false)"),
+    cl::cat(MergeCat));
 }
 
 /***/
