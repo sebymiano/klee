@@ -333,9 +333,10 @@ namespace {
            cl::cat(TerminationCat));
 
   cl::opt<bool>
-  UseLibcxx("use-libcxx",
-           cl::desc("Link the llvm libc++ library into the bitcode"),
-           cl::init(0));
+  Libcxx("libcxx",
+           cl::desc("Link the llvm libc++ library into the bitcode (default=false)"),
+           cl::init(false),
+           cl::cat(LinkCat));
 }
 
 namespace klee {
@@ -2088,7 +2089,7 @@ int main(int argc, char **argv, char **envp) {
     preparePOSIX(loadedModules, libcPrefix);
   }
 
-  if (UseLibcxx) {
+  if (Libcxx) {
 #ifndef SUPPORT_KLEE_LIBCXX
     klee_error("Klee was not compiled with libcxx support");
 #else
