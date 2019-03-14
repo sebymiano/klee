@@ -8,18 +8,20 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "KModule"
-#include "klee/Internal/Module/KModule.h"
-#include "klee/Internal/Support/ErrorHandling.h"
 
 #include "Passes.h"
 
 #include "klee/Config/Version.h"
-#include "klee/Interpreter.h"
 #include "klee/Internal/Module/Cell.h"
-#include "klee/Internal/Module/KInstruction.h"
 #include "klee/Internal/Module/InstructionInfoTable.h"
+#include "klee/Internal/Module/KInstruction.h"
+#include "klee/Internal/Module/KModule.h"
+#include "klee/Internal/Module/LLVMPassManager.h"
 #include "klee/Internal/Support/Debug.h"
+#include "klee/Internal/Support/ErrorHandling.h"
 #include "klee/Internal/Support/ModuleUtil.h"
+#include "klee/Interpreter.h"
+#include "klee/OptionCategories.h"
 
 #include "klee/ExecutionState.h"
 
@@ -44,7 +46,6 @@
 #include "llvm/Linker/Linker.h"
 #endif
 
-#include "klee/Internal/Module/LLVMPassManager.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
@@ -65,6 +66,12 @@
 using namespace llvm;
 using namespace klee;
 
+namespace klee {
+cl::OptionCategory
+    ModuleCat("Module-related options",
+              "These options affect the compile-time processing of the code.");
+}
+
 namespace {
   enum SwitchImplType {
     eSwitchTypeSimple,
@@ -74,16 +81,18 @@ namespace {
 
   cl::opt<bool>
   OutputSource("output-source",
-               cl::desc("Write the assembly for the final transformed source"),
-               cl::init(true));
+               cl::desc("Write the assembly for the final transformed source (default=true)"),
+               cl::init(true),
+	       cl::cat(ModuleCat));
 
   cl::opt<bool>
   OutputModule("output-module",
                cl::desc("Write the bitcode for the final transformed module"),
-               cl::init(false));
+               cl::init(false),
+	       cl::cat(ModuleCat));
 
   cl::opt<SwitchImplType>
-  SwitchType("switch-type", cl::desc("Select the implementation of switch"),
+  SwitchType("switch-type", cl::desc("Select the implementation of switch (default=internal)"),
              cl::values(clEnumValN(eSwitchTypeSimple, "simple", 
                                    "lower to ordered branches"),
                         clEnumValN(eSwitchTypeLLVM, "llvm", 
@@ -91,11 +100,13 @@ namespace {
                         clEnumValN(eSwitchTypeInternal, "internal", 
                                    "execute switch internally")
                         KLEE_LLVM_CL_VAL_END),
-             cl::init(eSwitchTypeInternal));
+             cl::init(eSwitchTypeInternal),
+	     cl::cat(ModuleCat));
   
   cl::opt<bool>
   DebugPrintEscapingFunctions("debug-print-escaping-functions", 
-                              cl::desc("Print functions whose address is taken."));
+                              cl::desc("Print functions whose address is taken (default=false)"),
+			      cl::cat(ModuleCat));
 }
 
 /***/
