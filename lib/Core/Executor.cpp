@@ -48,6 +48,7 @@
 #include "klee/Internal/Support/ModuleUtil.h"
 #include "klee/Internal/System/Time.h"
 #include "klee/Internal/System/MemoryUsage.h"
+#include "klee/OptionCategories.h"
 #include "klee/SolverStats.h"
 
 #include "../Expr/ArrayExprOptimizer.h"
@@ -130,6 +131,13 @@ namespace {
 
 
 
+  /* Constraint solving options */
+
+  cl::opt<unsigned>
+  MaxSymArraySize("max-sym-array-size",
+                  cl::desc("If a symbolic array exceeds this size (in bytes), symbolic addresses into this array are concretized.  Set to 0 to disable (default=0)"),
+                  cl::init(0),
+                  cl::cat(SolvingCat));
 
   cl::opt<bool>
   DebugCheckForImpliedValues("debug-check-for-implied-values");
@@ -144,17 +152,14 @@ namespace {
   cl::opt<bool>
   SimplifySymIndices("simplify-sym-indices",
                      cl::init(false),
-		     cl::desc("Simplify symbolic accesses using equalities from other constraints (default=false)"));
+		     cl::desc("Simplify symbolic accesses using equalities from other constraints (default=false)"),
+                     cl::cat(SolvingCat));
 
   cl::opt<bool>
   EqualitySubstitution("equality-substitution",
 		       cl::init(true),
-		       cl::desc("Simplify equality expressions before querying the solver (default=true)."));
-
-  cl::opt<unsigned>
-  MaxSymArraySize("max-sym-array-size",
-                  cl::init(0));
-
+		       cl::desc("Simplify equality expressions before querying the solver (default=true)"),
+                       cl::cat(SolvingCat));
 
   
   /*** External call policy options ***/
@@ -335,7 +340,6 @@ namespace {
 		      cl::init(1.),
 		      cl::desc("Maximum percentage of solving time that can be spent by a single instruction of a call path over total solving time for all instructions (default=1.0 (always))"),
                       cl::cat(TerminationCat));
-
 
 
   /*** Debugging options ***/
@@ -3771,7 +3775,7 @@ void Executor::executeMemoryOperation(ExecutionState &state,
   if (success) {
     const MemoryObject *mo = op.first;
 
-    if (MaxSymArraySize && mo->size>=MaxSymArraySize) {
+    if (MaxSymArraySize && mo->size >= MaxSymArraySize) {
       address = toConstant(state, address, "max-sym-array-size");
     }
     
