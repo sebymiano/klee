@@ -332,7 +332,9 @@ namespace {
            cl::cat(TerminationCat));
 }
 
+namespace klee {
 extern cl::opt<std::string> MaxTime;
+}
 
 class KleeHandler;
 
