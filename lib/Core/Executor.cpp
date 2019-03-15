@@ -100,7 +100,7 @@
 using namespace llvm;
 using namespace klee;
 
-namespace {
+namespace klee {
 
 /*** Test generation options ***/
 
