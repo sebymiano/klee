@@ -259,7 +259,7 @@ bool IntrinsicCleanerPass::runOnBasicBlock(BasicBlock &b, Module &M) {
         break;
       }
       // inspired by https://gitlab.doc.ic.ac.uk/dsl11/klee-cl/blob/two_thread_hack/lib/Module/LowerSSE.cpp
-      case Intrinsic::x86_sse2_storeu_dq: {
+      case Intrinsic::x86_sse2_pmulu_dq: {
         assert(ii->getNumArgOperands() == 2 && "wrong number of arguments");
         Value *dst = ii->getArgOperand(0);
         assert(dst && "Failed to get first argument");

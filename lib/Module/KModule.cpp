@@ -36,6 +36,7 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/ValueSymbolTable.h"
+#include "llvm/IR/Dominators.h"
 
 #if LLVM_VERSION_CODE < LLVM_VERSION(3, 5)
 #include "llvm/Analysis/Verifier.h"
@@ -450,10 +451,10 @@ KFunction::KFunction(llvm::Function *_function,
     numInstructions(0),
     trackCoverage(true) {
   // Build loop info, for loop-invariant deduction.
-  llvm::DominatorTreeBase<llvm::BasicBlock> dt(false);
+  llvm::DominatorTreeBase<llvm::BasicBlock, false> dt;
   dt.recalculate(*function);
 
-  loopInfo.Analyze(dt);
+  loopInfo.analyze(dt);
   // Assign unique instruction IDs to each basic block
   for (auto &BasicBlock : *function) {
     basicBlockEntry[&BasicBlock] = numInstructions;
@@ -559,7 +560,7 @@ void KFunction::clearAnalysedLoops() {
 }
 
 void KModule::clearAnalysedLoops() {
-  for (std::vector<KFunction*>::iterator i = functions.begin(),
+  for (auto i = functions.begin(),
          e = functions.end(); i != e; ++i) {
     (**i).clearAnalysedLoops();
   }

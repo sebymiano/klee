@@ -82,7 +82,7 @@
 
 //TODO: generalize for otehr LLVM versions like the above
 #include <llvm/Analysis/LoopInfo.h>
-#include <llvm/Analysis/Dominators.h>
+#include <llvm/IR/Dominators.h>
 
 
 #include <algorithm>
@@ -165,22 +165,13 @@ cl::opt<bool>
                          cl::desc("Simplify equality expressions before "
                                   "querying the solver (default=true)"),
                          cl::cat(SolvingCat));
-  cl::opt<bool>
-  DebugCheckForImpliedValues("debug-check-for-implied-values");
 
-  cl::opt<bool>
+cl::opt<bool>
   DebugReportSymbdex("debug-report-symbdex",
                      cl::desc("print stack trace for each symbolic "
                               "indexing occurence (symbdex may "
                               "considerably slow down symbolic "
                               "execution)"));
-
-  cl::opt<bool>
-  SimplifySymIndices("simplify-sym-indices",
-                     cl::init(false),
-		     cl::desc("Simplify symbolic accesses using equalities from other constraints (default=false)"),
-                     cl::cat(SolvingCat));
-
 
 /*** External call policy options ***/
 
@@ -276,28 +267,6 @@ cl::opt<std::string>
                       "search (default=0s (off))"),
              cl::cat(SeedingCat));
 
-  cl::list<Executor::TerminateReason>
-  ExitOnErrorType("exit-on-error-type",
-		  cl::desc("Stop execution after reaching a specified condition (default=false)"),
-		  cl::values(
-		    clEnumValN(Executor::Abort, "Abort", "The program crashed"),
-		    clEnumValN(Executor::Assert, "Assert", "An assertion was hit"),
-		    clEnumValN(Executor::BadVectorAccess, "BadVectorAccess", "Vector accessed out of bounds"),
-		    clEnumValN(Executor::Exec, "Exec", "Trying to execute an unexpected instruction"),
-		    clEnumValN(Executor::External, "External", "External objects referenced"),
-		    clEnumValN(Executor::Free, "Free", "Freeing invalid memory"),
-		    clEnumValN(Executor::Model, "Model", "Memory model limit hit"),
-		    clEnumValN(Executor::Overflow, "Overflow", "An overflow occurred"),
-		    clEnumValN(Executor::Ptr, "Ptr", "Pointer error"),
-		    clEnumValN(Executor::ReadOnly, "ReadOnly", "Write to read-only memory"),
-		    clEnumValN(Executor::ReportError, "ReportError", "klee_report_error called"),
-		    clEnumValN(Executor::User, "User", "Wrong klee_* functions invocation"),
-		    clEnumValN(Executor::Inaccessible, "Inaccessible", "The memory access is forbidden for this address at this point by klee_forbid_access"),
-		    clEnumValN(Executor::Unhandled, "Unhandled", "Unhandled instruction hit")
-		    KLEE_LLVM_CL_VAL_END),
-		  cl::ZeroOrMore,
-                  cl::cat(TerminationCat));
-
 /*** Termination criteria options ***/
 
 cl::list<Executor::TerminateReason> ExitOnErrorType(
@@ -321,6 +290,7 @@ cl::list<Executor::TerminateReason> ExitOnErrorType(
         clEnumValN(Executor::ReportError, "ReportError",
                    "klee_report_error called"),
         clEnumValN(Executor::User, "User", "Wrong klee_* functions invocation"),
+        clEnumValN(Executor::Inaccessible, "Inaccessible", "The memory access is forbidden for this address at this point by klee_forbid_access"),
         clEnumValN(Executor::Unhandled, "Unhandled",
                    "Unhandled instruction hit") KLEE_LLVM_CL_VAL_END),
     cl::ZeroOrMore,
@@ -1842,19 +1812,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
           // may need to do coercion due to bitcasts
           Expr::Width from = result->getWidth();
           Expr::Width to = getWidthForLLVMType(t);
-            
+
           if (from != to) {
             bool isSExt = true;
             if (isa<InvokeInst>(caller) || isa<CallInst>(caller)) {
-              CallSite cs = (isa<InvokeInst>(caller) ? CallSite(cast<InvokeInst>(caller)) : 
+              CallSite cs = (isa<InvokeInst>(caller) ? CallSite(cast<InvokeInst>(caller)) :
                              CallSite(cast<CallInst>(caller)));
 
-            // XXX need to check other param attrs ?
-#if LLVM_VERSION_CODE >= LLVM_VERSION(5, 0)
-            bool isSExt = cs.hasRetAttr(llvm::Attribute::SExt);
-#else
-            bool isSExt = cs.paramHasAttr(0, llvm::Attribute::SExt);
-#endif
+              isSExt = cs.hasRetAttr(llvm::Attribute::SExt);
+            }
+
             if (isSExt) {
               result = SExtExpr::create(result, to);
             } else {
@@ -1872,7 +1839,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
           terminateStateOnExecError(state, "return void when caller expected a result");
         }
       }
-    }      
+    }
     break;
   }
   case Instruction::Br: {
@@ -1895,9 +1862,8 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       if (statsTracker && state.stack.back().kf->trackCoverage)
         statsTracker->markBranchVisited(branches.first, branches.second);
 
-      if (branches.first) {
+      if (branches.first)
         transferToBasicBlock(bi->getSuccessor(0), bi->getParent(), *branches.first);
-      }
       if (branches.second) {
         transferToBasicBlock(bi->getSuccessor(1), bi->getParent(), *branches.second);
       }
@@ -3815,7 +3781,8 @@ void Executor::executeMemoryOperation(ExecutionState &state,
     if (!isa<ConstantExpr>(address)) {
       printf("\n");
       printf("Some symbolic indexing going on here:\n");
-      state.pc->printFileLine(llvm::errs());
+      printf("%s\n", state.pc->getSourceLocation().c_str());
+      //state.pc->printFileLine(llvm::errs());
       state.dumpStack(llvm::errs());
     }
   }

@@ -288,10 +288,6 @@ int klee_int(const char *name) {
   return x;
 }
 
-void klee_abort() {
-  exit(-1);
-}
-
 void klee_prefer_cex(void *object, uintptr_t condition) { }
 
 void klee_abort() {

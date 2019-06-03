@@ -27,9 +27,10 @@
 #include "klee/LoopAnalysis.h"
 
 #include "llvm/IR/Function.h"
-#include "llvm/DebugInfo.h"
+#include "llvm/IR/DebugInfo.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/FileSystem.h"
 
 #include <cassert>
 #include <algorithm>
@@ -83,7 +84,6 @@ ExecutionState::ExecutionState(KFunction *kf) :
 
     executionStateForLoopInProcess(0),
 
-    queryCost(0.),
     weight(1),
     depth(0),
 
@@ -94,18 +94,22 @@ ExecutionState::ExecutionState(KFunction *kf) :
     relevantSymbols(),
     doTrace(true),
     condoneUndeclaredHavocs(false),
-    steppedInstructions(0){
+    steppedInstructions(0) {
   pushFrame(0, kf);
 }
 
 ExecutionState::ExecutionState(const std::vector<ref<Expr> > &assumptions)
+    : executionStateForLoopInProcess(0), constraints(assumptions),
+      ptreeNode(0), relevantSymbols(), doTrace(true), condoneUndeclaredHavocs(false) {}
+
+/*ExecutionState::ExecutionState(const std::vector<ref<Expr> > &assumptions)
   : executionStateForLoopInProcess(0),
     constraints(assumptions),
-    queryCost(0.), ptreeNode(0),
+    queryCost(0.), ptreeNode(0) {}//,
     relevantSymbols(),
     doTrace(true),
     condoneUndeclaredHavocs(false) {}
-
+*/
 ExecutionState::~ExecutionState() {
   for (unsigned int i=0; i<symbolics.size(); i++)
   {
@@ -142,7 +146,6 @@ ExecutionState::ExecutionState(const ExecutionState& state):
     stack(state.stack),
     incomingBBIndex(state.incomingBBIndex),
 
-
     addressSpace(state.addressSpace),
     loopInProcess(state.loopInProcess) ,
     analysedLoops(state.analysedLoops),
@@ -169,7 +172,7 @@ ExecutionState::ExecutionState(const ExecutionState& state):
     relevantSymbols(state.relevantSymbols),
     doTrace(state.doTrace),
     condoneUndeclaredHavocs(state.condoneUndeclaredHavocs),
-    openMergeStack(state.openMergeStack)
+    openMergeStack(state.openMergeStack),
     steppedInstructions(state.steppedInstructions)
 {
   for (unsigned int i=0; i<symbolics.size(); i++)
@@ -524,7 +527,7 @@ bool symbolSetsIntersect(const SymbolSet& a, const SymbolSet& b) {
 std::vector<ref<Expr> > ExecutionState::
 relevantConstraints(SymbolSet symbols) const {
   std::vector<ref<Expr> > ret;
-  llvm::SmallPtrSet<Expr*, 100> insertedConstraints;
+  llvm::SmallPtrSet<Expr*, 32> insertedConstraints;
   bool newSymbols = false;
   do {
     newSymbols = false;
@@ -536,7 +539,7 @@ relevantConstraints(SymbolSet symbols) const {
         for (SymbolSet::const_iterator csi = constrainedSymbols.begin(),
                cse = constrainedSymbols.end();
              csi != cse; ++csi) {
-          bool inserted = symbols.insert(*csi);
+          bool inserted = symbols.insert(*csi).second;
           newSymbols = newSymbols || inserted;
         }
         symbols.insert(constrainedSymbols.begin(), constrainedSymbols.end());
@@ -1479,10 +1482,11 @@ bool klee::updateDiffMask(StateByteMask* mask,
       if (isa<llvm::Instruction>(obj->allocSite)) {
         const llvm::Instruction *inst = dyn_cast<llvm::Instruction>(obj->allocSite);
         if (llvm::MDNode *node = inst->getMetadata("dbg")) {
-          llvm::DILocation loc(node);
-          metadata = loc.getDirectory().str() + "/" +
-            loc.getFilename().str() + ":" +
-            numToStr(loc.getLineNumber());
+          llvm::DebugLoc debugLoc(node);
+          llvm::DILocation *loc = debugLoc.get();
+          metadata = loc->getDirectory().str() + "/" +
+            loc->getFilename().str() + ":" +
+            numToStr(loc->getLine());
         } else {
           metadata = "(unknown)";
         }
@@ -1518,11 +1522,14 @@ bool klee::updateDiffMask(StateByteMask* mask,
         // it also differs structuraly now. It is time to make
         // sure it can be really different.
 
-        solver->setTimeout(0.01);//TODO: determine a correct argument here.
+        //solver->setTimeout(0.01);//TODO: determine a correct argument here.
+        time::Span timeout;
+        timeout *= static_cast<double>(0.01);
+	solver->setTimeout(timeout);
         bool mayDiffer = true;
         bool solverRes = solver->mayBeFalse(state, EqExpr::create(refVal, val),
                                             /*&*/mayDiffer);
-        solver->setTimeout(0);
+        solver->setTimeout(time::Span());
         //assert(solverRes &&
         //       "Solver failed in computing whether a byte changed or not.");
         if (solverRes && mayDiffer) {
@@ -1573,13 +1580,13 @@ void ExecutionState::dumpConstraints() const {
   int tmp = cnt;
   while (0 < tmp) {fname = digits[tmp%10] + fname; tmp /= 10;}
   fname += ".txt";
-  std::string Error;
+  std::error_code Error;
   llvm::raw_ostream *file = new llvm::raw_fd_ostream(fname.c_str(), Error, llvm::sys::fs::F_None);
-  if (!Error.empty()) {
+  if (Error) {
     printf("error opening file \"%s\".  KLEE may have run out of file "
            "descriptors: try to increase the maximum number of open file "
            "descriptors by using ulimit (%s).",
-           fname.c_str(), Error.c_str());
+           fname.c_str(), Error.message().c_str());
     delete file;
     file = NULL;
     return;

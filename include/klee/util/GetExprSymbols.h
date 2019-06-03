@@ -15,7 +15,7 @@
 
 namespace klee {
 
-typedef llvm::SmallPtrSet<const Array*, 100> SymbolSet;
+typedef llvm::SmallPtrSet<const Array*, 32> SymbolSet;
 
 class GetExprSymbols: public ExprAnalysis<GetExprSymbols, SymbolSet > {
 };

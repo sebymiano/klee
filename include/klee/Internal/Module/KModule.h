@@ -76,8 +76,7 @@ namespace klee {
 
   public:
     explicit KFunction(llvm::Function*, KModule *);
-    KFunction(const KFunction &) = delete;
-    KFunction &operator=(const KFunction &) = delete;
+    //KFunction(const KFunction &) = delete;
 
     ~KFunction();
 
