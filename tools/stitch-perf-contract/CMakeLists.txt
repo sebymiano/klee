@@ -15,6 +15,6 @@ set(KLEE_LIBS
   kleeCore
 )
 
-target_link_libraries(stitch-perf-contract ${KLEE_LIBS})
+target_link_libraries(stitch-perf-contract -ldl ${KLEE_LIBS})
 
 install(TARGETS stitch-perf-contract RUNTIME DESTINATION bin)

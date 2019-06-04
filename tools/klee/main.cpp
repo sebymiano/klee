@@ -233,29 +233,9 @@ namespace {
 
 
   /*** Replaying options ***/
-  
+
   cl::OptionCategory ReplayCat("Replaying options",
                                "These options impact replaying of test cases.");
-  
-  cl::opt<bool>
-  OptimizeModule("optimize",
-                 cl::desc("Optimize before execution"),
-		 cl::init(false));
-
-  cl::opt<bool>
-  CheckDivZero("check-div-zero",
-               cl::desc("Inject checks for division-by-zero"),
-               cl::init(true));
-
-  cl::opt<bool>
-  CheckOvershift("check-overshift",
-               cl::desc("Inject checks for overshift"),
-               cl::init(true));
-
-  cl::opt<std::string>
-  OutputDir("output-dir",
-            cl::desc("Directory to write results in (defaults to klee-out-N)"),
-            cl::init(""));
 
   cl::opt<bool>
   DumpCallTracePrefixes("dump-call-trace-prefixes",
@@ -421,7 +401,7 @@ public:
                                  std::vector<std::string> &results);
 
   static std::string getRunTimeLibraryPath(const char *argv0);
-  llvm::raw_fd_ostream  *openNextCallPathPrefixFile();
+  std::unique_ptr<llvm::raw_fd_ostream> openNextCallPathPrefixFile();
 
   void dumpCallPathPrefixes();
   void dumpCallPath(const ExecutionState &state, llvm::raw_ostream *file);
@@ -645,10 +625,9 @@ void KleeHandler::processTestCase(const ExecutionState &state,
       }
 
       if (DumpCallTraces) {
-        llvm::raw_fd_ostream *trace_file =
+        auto trace_file =
           openOutputFile(getTestFilename("call_path", id));
-        dumpCallPath(state, trace_file);
-        delete trace_file;
+        dumpCallPath(state, trace_file.get());
       }
 
       for (unsigned i=0; i<b.numObjects; i++)
@@ -1039,7 +1018,7 @@ void KleeHandler::processCallPath(const ExecutionState &state) {
 
   std::stringstream filename;
   filename << "call-path" << std::setfill('0') << std::setw(6) << id << '.' << "txt";
-  llvm::raw_ostream *file = openOutputFile(filename.str());
+  auto file = openOutputFile(filename.str());
   for (std::vector<CallInfo>::const_iterator iter = state.callPath.begin(),
          end = state.callPath.end(); iter != end; ++iter) {
     const CallInfo& ci = *iter;
@@ -1051,10 +1030,9 @@ void KleeHandler::processCallPath(const ExecutionState &state) {
          cEnd = state.constraints.end(); ci != cEnd; ++ci) {
     *file <<**ci<<"\n";
   }
-  delete file;
 }
 
-llvm::raw_fd_ostream *KleeHandler::openNextCallPathPrefixFile() {
+std::unique_ptr<llvm::raw_fd_ostream> KleeHandler::openNextCallPathPrefixFile() {
   unsigned id = ++m_callPathPrefixIndex;
   std::stringstream filename;
   filename << "call-prefix" << std::setfill('0') << std::setw(6) << id << '.' << "txt";
@@ -1393,7 +1371,7 @@ void CallTree::dumpCallPrefixes(std::list<CallInfo> accumulated_prefix,
   std::vector<std::vector<CallPathTip*> >::iterator ti = tipCalls.begin(),
     te = tipCalls.end();
   for (; ti != te; ++ti) {
-    llvm::raw_ostream* file = fileOpener->openNextCallPathPrefixFile();
+    auto file = fileOpener->openNextCallPathPrefixFile();
     std::list<CallInfo>::iterator ai = accumulated_prefix.begin(),
       ae = accumulated_prefix.end();
     for (; ai != ae; ++ai) {
@@ -1431,7 +1409,6 @@ void CallTree::dumpCallPrefixes(std::list<CallInfo> accumulated_prefix,
       *file <<"true)\n";
     }
     *file <<"false)\n";
-    delete file;
   }
   std::vector< CallTree* >::iterator ci = children.begin(),
     ce = children.end();
@@ -1452,7 +1429,7 @@ void CallTree::dumpCallPrefixesSExpr(std::list<CallInfo> accumulated_prefix,
   std::vector<std::vector<CallPathTip*> >::iterator ti = tipCalls.begin(),
     te = tipCalls.end();
   for (; ti != te; ++ti) {
-    llvm::raw_ostream* file = fileOpener->openNextCallPathPrefixFile();
+    auto file = fileOpener->openNextCallPathPrefixFile();
     std::list<CallInfo>::iterator ai = accumulated_prefix.begin(),
       ae = accumulated_prefix.end();
     *file <<"((history (\n";
@@ -1470,7 +1447,6 @@ void CallTree::dumpCallPrefixesSExpr(std::list<CallInfo> accumulated_prefix,
       assert(dumped);
     }
     *file <<")))\n";
-    delete file;
   }
   std::vector< CallTree* >::iterator ci = children.begin(),
     ce = children.end();
@@ -2133,13 +2109,6 @@ int main(int argc, char **argv, char **envp) {
                         errorMsg))
       klee_error("error loading free standing support '%s': %s",
                  library.c_str(), errorMsg.c_str());
-  }
-
-  // Get the desired main function.  klee_main initializes uClibc
-  // locale and other data and then calls main.
-  Function *mainFn = mainModule->getFunction(EntryPoint);
-  if (!mainFn) {
-    klee_error("'%s' function not found in module.", EntryPoint.c_str());
   }
 
   // FIXME: Change me to std types.
