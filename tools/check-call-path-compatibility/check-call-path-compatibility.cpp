@@ -82,10 +82,10 @@ call_path_t *load_call_path(std::string file_name) {
 
     case STATE_KQUERY: {
       if (line == ";;-- Calls --") {
-        llvm::MemoryBuffer *MB = llvm::MemoryBuffer::getMemBuffer(kQuery);
+        auto MB = llvm::MemoryBuffer::getMemBuffer(kQuery);
         klee::ExprBuilder *Builder = klee::createDefaultExprBuilder();
         klee::expr::Parser *P =
-            klee::expr::Parser::Create("", MB, Builder, false);
+            klee::expr::Parser::Create("", MB.get(), Builder, false);
         while (klee::expr::Decl *D = P->ParseTopLevelDecl()) {
           assert(!P->GetNumErrors() &&
                  "Error parsing kquery in call path file.");
