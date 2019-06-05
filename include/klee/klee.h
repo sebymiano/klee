@@ -44,6 +44,8 @@ extern "C" {
    */
   int klee_range(int begin, int end, const char *name);
 
+  void klee_make_symbolic_range(void* addr, size_t offset, size_t nbytes, const char* name);
+
   /*  klee_int - Construct an unconstrained symbolic integer.
    *
    * \arg name - An optional name, used for identifying the object in messages,
