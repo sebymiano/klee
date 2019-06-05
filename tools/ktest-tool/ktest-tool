@@ -74,12 +74,10 @@ class KTest:
                 mask = f.read(mask_size)
                 havocs.append( (name,bytes,mask) )
         # Create an instance
-        b = KTest(version, args, symArgvs, symArgvLen, objects, havocs)
-        # Augment with extra filename field
-        b.filename = path
+        b = KTest(version, path, args, symArgvs, symArgvLen, objects, havocs)
         return b
-    
-    def __init__(self, version, args, symArgvs, symArgvLen, objects, havocs):
+
+    def __init__(self, path, version, args, symArgvs, symArgvLen, objects, havocs):
         self.version = version
         self.path = path
         self.symArgvs = symArgvs
@@ -125,6 +123,16 @@ class KTest:
                     p('uint', struct.unpack(m.upper(), data)[0])
                     break
             p('text', txt)
+
+	# print havocs
+        print('num havocs: %r' % len(self.havocs))
+        for i,(name,data,mask) in enumerate(self.havocs):
+            text = data.rstrip(b'\x00') if format_spec.endswith('trimzeros') else data
+
+            print('havoc %4d: name: %r' % (i, name))
+            print('havoc %4d: size: %r' % (i, len(data)))
+            print('havoc %4d: mask: %r' % (i, mask))
+            print('havoc %4d: data: %r' % (i, text))
 
         return sio.getvalue()
 
@@ -191,29 +199,6 @@ def main():
         else:
             fmt = '{:trimzeros}' if args.trim_zeros else '{}'
             print(fmt.format(ktest), end='')
-
-            print('object %4d: name: %r' % (i, name))
-            print('object %4d: size: %r' % (i, len(data)))
-            if opts.writeInts and len(data) == 4: 
-                print('object %4d: data: %r' % (i, struct.unpack('i',str)[0]))
-            else:
-                print('object %4d: data: %r' % (i, str))
-        print('num havocs: %r' % len(b.havocs))
-        for i,(name,data,mask) in enumerate(b.havocs):
-            if opts.trimZeros:
-                str = trimZeros(data)
-            else:
-                str = data
-
-            print('havoc %4d: name: %r' % (i, name))
-            print('havoc %4d: size: %r' % (i, len(data)))
-            print('havoc %4d: mask: %r' % (i, mask))
-            if opts.writeInts and len(data) == 4: 
-                print('havoc %4d: data: %r' % (i, struct.unpack('i',str)[0]))
-            else:
-                print('havoc %4d: data: %r' % (i, str))
-        if file != args[-1]:
-            print()
 
 if __name__ == '__main__':
     main()
